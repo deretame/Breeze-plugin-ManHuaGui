@@ -35,7 +35,7 @@ import type {
   ToggleLikePayload,
   ToggleLikeResult,
   UserInfoBundleContract,
-} from "../types/type";
+} from "breeze-plugin-kit";
 import {
   NOT_FOUND_IMAGE_URL,
   PLUGIN_ID,

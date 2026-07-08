@@ -10,7 +10,7 @@ import type {
   MetadataListItem,
   PagingInfo,
   StringMap,
-} from "../types/type";
+} from "breeze-plugin-kit";
 
 export function toStringMap(value: unknown): StringMap {
   if (!value || typeof value !== "object" || Array.isArray(value)) {

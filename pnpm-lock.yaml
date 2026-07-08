@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      breeze-plugin-kit:
+        specifier: ^0.3.0
+        version: 0.3.0
     devDependencies:
       '@rspack/cli':
         specifier: ^2.0.5
@@ -288,6 +292,9 @@ packages:
 
   boolbase@1.0.0:
     resolution: {integrity: sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww==}
+
+  breeze-plugin-kit@0.3.0:
+    resolution: {integrity: sha512-+UysHB6tpi2FO8/95p41jm4RFgRYCN4CqAJdV1XtNcteFyYmgNUiEQD09yWwUIjawku9PUAJ0QCdhIkmaeff2g==}
 
   cheerio-select@2.1.0:
     resolution: {integrity: sha512-9v9kG0LvzrlcungtnJtpGNxY+fzECQKhK4EGJX2vByejiMX84MFNQw4UxPJl3bFbTMw+Dfs37XaIkCwTZfLh4g==}
@@ -591,6 +598,8 @@ snapshots:
       undici-types: 7.24.6
 
   boolbase@1.0.0: {}
+
+  breeze-plugin-kit@0.3.0: {}
 
   cheerio-select@2.1.0:
     dependencies:

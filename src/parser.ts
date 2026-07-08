@@ -2,8 +2,9 @@
  * 漫画柜 HTML 解析器（基于 BreezeHtml / cheerio 子集）。
  */
 
-import type { BreezeApi, BreezeSelection } from "../types/breeze-html";
 import type {
+  BreezeApi,
+  BreezeSelection,
   ChapterSummary,
   ComicDetailContract,
   ComicDetailNormal,
@@ -11,16 +12,17 @@ import type {
   ImageItem,
   MetadataListItem,
   PagingInfo,
+  RecommendItem,
   SearchResultContract,
   StringMap,
-} from "../types/type";
+} from "breeze-plugin-kit";
+import { PLUGIN_ID, createActionItem, createImage } from "./common";
 import {
   buildChapterUrl,
   buildComicUrl,
   normalizeUrl,
   parseComicPath,
 } from "./manhuagui";
-import { PLUGIN_ID, createActionItem, createImage } from "./common";
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -123,6 +125,36 @@ function buildComicListItem(
   };
 }
 
+function buildRecommendItem(
+  bid: string,
+  title: string,
+  subtitle: string,
+  coverUrl: string,
+): RecommendItem {
+  const cover: ImageItem = createImage({
+    id: bid,
+    url: normalizeUrl(coverUrl),
+    name: `${bid}.jpg`,
+    path: `comic/${bid}/cover.jpg`,
+    extern: { bid },
+  });
+
+  return {
+    source: PLUGIN_ID,
+    id: bid,
+    title,
+    subtitle,
+    finished: /完結|已完结/.test(subtitle) || /^共/.test(subtitle),
+    likesCount: 0,
+    viewsCount: 0,
+    updatedAt: "",
+    cover,
+    metadata: [],
+    raw: { bid, title, subtitle, coverUrl },
+    extern: { bid },
+  };
+}
+
 function buildPaging(page: number, total: number, pageSize = 10): PagingInfo {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return {
@@ -144,64 +176,62 @@ export function parseSearchResult(
   const root = loadHtml(html);
   const items: ComicListItem[] = [];
 
-  root(".book-result > ul > li").each(
-    (_idx: number, li: BreezeSelection) => {
-      const $li = root(li);
+  root(".book-result > ul > li").each((_idx: number, li: BreezeSelection) => {
+    const $li = root(li);
 
-      const $cover = $li.find(".book-cover a.bcover").first();
-      const href = extractAttr($cover, "href");
-      const parsed = parseComicPath(href);
-      if (!parsed) return;
-      const bid = parsed.bid;
+    const $cover = $li.find(".book-cover a.bcover").first();
+    const href = extractAttr($cover, "href");
+    const parsed = parseComicPath(href);
+    if (!parsed) return;
+    const bid = parsed.bid;
 
-      const title =
-        extractAttr($cover, "title") || extractText($li.find("dt a").first());
-      const $subtitleA = $li.find("dt small a").first();
-      const subtitle = $subtitleA.length > 0 ? extractText($subtitleA) : "";
-      const coverUrl = extractAttr($cover.find("img").first(), "src");
+    const title =
+      extractAttr($cover, "title") || extractText($li.find("dt a").first());
+    const $subtitleA = $li.find("dt small a").first();
+    const subtitle = $subtitleA.length > 0 ? extractText($subtitleA) : "";
+    const coverUrl = extractAttr($cover.find("img").first(), "src");
 
-      const statusText = extractText($li.find(".tags.status").first());
-      const statusInfo = parseStatusText(statusText);
+    const statusText = extractText($li.find(".tags.status").first());
+    const statusInfo = parseStatusText(statusText);
 
-      const authors: string[] = [];
-      $li.find(".tags").each((_i: number, el: BreezeSelection) => {
-        const $el = root(el);
-        const text = $el.text();
-        if (text.includes("作者：")) {
-          $el.find("a").each((_j: number, a: BreezeSelection) => {
-            const $a = root(a);
-            const name = $a.text().trim();
-            if (name) authors.push(name);
-          });
-        }
-      });
+    const authors: string[] = [];
+    $li.find(".tags").each((_i: number, el: BreezeSelection) => {
+      const $el = root(el);
+      const text = $el.text();
+      if (text.includes("作者：")) {
+        $el.find("a").each((_j: number, a: BreezeSelection) => {
+          const $a = root(a);
+          const name = $a.text().trim();
+          if (name) authors.push(name);
+        });
+      }
+    });
 
-      const tags: string[] = [];
-      $li.find(".tags").each((_i: number, el: BreezeSelection) => {
-        const $el = root(el);
-        const text = $el.text();
-        if (text.includes("類型：")) {
-          $el.find("a").each((_j: number, a: BreezeSelection) => {
-            const $a = root(a);
-            const name = $a.text().trim();
-            if (name) tags.push(name);
-          });
-        }
-      });
+    const tags: string[] = [];
+    $li.find(".tags").each((_i: number, el: BreezeSelection) => {
+      const $el = root(el);
+      const text = $el.text();
+      if (text.includes("類型：")) {
+        $el.find("a").each((_j: number, a: BreezeSelection) => {
+          const $a = root(a);
+          const name = $a.text().trim();
+          if (name) tags.push(name);
+        });
+      }
+    });
 
-      items.push(
-        buildComicListItem(
-          bid,
-          title,
-          subtitle,
-          coverUrl,
-          statusInfo,
-          authors,
-          tags,
-        ),
-      );
-    },
-  );
+    items.push(
+      buildComicListItem(
+        bid,
+        title,
+        subtitle,
+        coverUrl,
+        statusInfo,
+        authors,
+        tags,
+      ),
+    );
+  });
 
   const totalText = root(".result-count strong").last().text().trim();
   const total = safeNumber(totalText.replace(/,/g, ""));
@@ -232,8 +262,9 @@ function parseDetailTags(
   label: string,
 ): string[] {
   const result: string[] = [];
-  $root.find("ul.detail-list li span").each(
-    (_idx: number, span: BreezeSelection) => {
+  $root
+    .find("ul.detail-list li span")
+    .each((_idx: number, span: BreezeSelection) => {
       const $span = root(span);
       const strongText = $span.find("strong").first().text().trim();
       if (strongText.includes(label)) {
@@ -242,8 +273,7 @@ function parseDetailTags(
           if (name) result.push(name);
         });
       }
-    },
-  );
+    });
   return result;
 }
 
@@ -258,6 +288,66 @@ function parseDetailStatusText($root: BreezeSelection): {
   return { finished, updatedAt, totalViews: 0, totalLikes: 0 };
 }
 
+function parseDetailText(
+  root: BreezeApi,
+  $root: BreezeSelection,
+  label: string,
+): string {
+  let result = "";
+  $root
+    .find("ul.detail-list li span")
+    .each((_idx: number, span: BreezeSelection) => {
+      const $span = root(span);
+      const strongText = $span.find("strong").first().text().trim();
+      if (strongText.includes(label)) {
+        result = $span.text().replace(strongText, "").trim();
+      }
+    });
+  if (result === "暫無") return "";
+  return result;
+}
+
+function createSearchAction(keyword: string): StringMap {
+  return {
+    type: "openSearch",
+    payload: {
+      source: PLUGIN_ID,
+      keyword,
+      extern: {},
+    },
+  } as StringMap;
+}
+
+function parseRecommendations(
+  root: BreezeApi,
+  $root: BreezeSelection,
+): RecommendItem[] {
+  const items: RecommendItem[] = [];
+
+  $root
+    .find(".book-similar .similar-list > li")
+    .each((_idx: number, li: BreezeSelection) => {
+      const $li = root(li);
+      const $a = $li.find("a.scover").first();
+      const href = extractAttr($a, "href");
+      const parsed = parseComicPath(href);
+      if (!parsed) return;
+
+      const bid = parsed.bid;
+      const title =
+        extractAttr($a, "title") ||
+        extractText($li.find("p.ell a").first()) ||
+        extractText($a);
+      const coverUrl = extractAttr($a.find("img").first(), "src");
+      const subtitle = extractText($li.find("span.tt").first());
+
+      if (!title) return;
+      items.push(buildRecommendItem(bid, title, subtitle, coverUrl));
+    });
+
+  return items;
+}
+
 function parseChapters(
   root: BreezeApi,
   $root: BreezeSelection,
@@ -267,30 +357,29 @@ function parseChapters(
 
   // 漫画柜把章节分成多个 ul，每个 ul 内部是倒序的；
   // 按页面顺序遍历每个 ul，先将其内部倒序，再整体拼接。
-  $root.find("#chapter-list-1 ul").each(
-    (_idx: number, ul: BreezeSelection) => {
-      const $ul = root(ul);
-      const group: ChapterSummary[] = [];
-      $ul.find("li a").each((_i: number, a: BreezeSelection) => {
-        const $a = root(a);
-        const href = extractAttr($a, "href");
-        const parsed = parseComicPath(href);
-        if (!parsed?.cid) return;
-        const cid = parsed.cid;
-        const name = extractAttr($a, "title") || extractText($a);
-        group.push({
-          id: cid,
-          requestId: cid,
-          logicalKey: cid,
-          storageChapterId: cid,
-          name,
-          order: 0,
-          extern: { bid, cid },
-        });
+  // 章节列表容器 id 可能是 chapter-list-0、chapter-list-1 …，兼容处理。
+  $root.find('[id^="chapter-list-"] ul').each((_idx: number, ul: BreezeSelection) => {
+    const $ul = root(ul);
+    const group: ChapterSummary[] = [];
+    $ul.find("li a").each((_i: number, a: BreezeSelection) => {
+      const $a = root(a);
+      const href = extractAttr($a, "href");
+      const parsed = parseComicPath(href);
+      if (!parsed?.cid) return;
+      const cid = parsed.cid;
+      const name = extractAttr($a, "title") || extractText($a);
+      group.push({
+        id: cid,
+        requestId: cid,
+        logicalKey: cid,
+        storageChapterId: cid,
+        name,
+        order: 0,
+        extern: { bid, cid },
       });
-      groups.push(group.reverse());
-    },
-  );
+    });
+    groups.push(group.reverse());
+  });
 
   const flat = groups.flat();
   flat.forEach((c, idx) => {
@@ -312,8 +401,11 @@ export function parseComicDetail(
 
   const authors = parseDetailTags(root, $detail, "作者：");
   const tags = parseDetailTags(root, $detail, "劇情：");
+  const region = parseDetailTags(root, $detail, "地區：").join(", ") || "";
+  const alias = parseDetailText(root, $detail, "別名：");
   const status = parseDetailStatusText($detail);
-  const chapters = parseChapters(root, root("#chapter-list-1"), bid);
+  const chapters = parseChapters(root, root(".chapter"), bid);
+  const recommend = parseRecommendations(root, root("body"));
 
   const cover: ImageItem = createImage({
     id: bid,
@@ -342,14 +434,14 @@ export function parseComicDetail(
       type: "author",
       name: "作者",
       value: authors.length
-        ? authors.map((a) => createActionItem(a))
+        ? authors.map((a) => createActionItem(a, createSearchAction(a)))
         : [createActionItem("未知")],
     },
     {
       type: "tags",
-      name: "類型",
+      name: "分類",
       value: tags.length
-        ? tags.map((t) => createActionItem(t))
+        ? tags.map((t) => createActionItem(t, createSearchAction(t)))
         : [createActionItem("未知")],
     },
   ];
@@ -361,6 +453,9 @@ export function parseComicDetail(
       titleMeta: [
         createActionItem(`章節數：${chapters.length}`),
         createActionItem(`狀態：${status.finished ? "完結" : "連載中"}`),
+        createActionItem(`別名：${alias || "無"}`),
+        createActionItem(`更新：${status.updatedAt || "未知"}`),
+        createActionItem(`地區：${region || "未知"}`),
       ],
       creator,
       description,
@@ -369,7 +464,7 @@ export function parseComicDetail(
       extern: { bid },
     },
     eps: chapters,
-    recommend: [],
+    recommend,
     totalViews: status.totalViews,
     totalLikes: status.totalLikes,
     totalComments: 0,
@@ -398,13 +493,16 @@ export function parseComicDetail(
         title,
         authors,
         tags,
+        alias,
+        region,
         description,
         finished: status.finished,
         updatedAt: status.updatedAt,
         chapters,
+        recommend,
       },
     },
   };
 }
 
-export { buildComicUrl, buildChapterUrl };
+export { buildChapterUrl, buildComicUrl };
