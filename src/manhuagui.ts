@@ -12,8 +12,7 @@ export function buildHeaders(): Record<string, string> {
   return {
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.0 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.0",
-    Accept:
-      "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
     Referer: REFERER,
   };
@@ -41,10 +40,7 @@ export function buildComicUrl(bid: string | number): string {
 }
 
 /** 阅读页 URL */
-export function buildChapterUrl(
-  bid: string | number,
-  cid: string | number,
-): string {
+export function buildChapterUrl(bid: string | number, cid: string | number): string {
   return `${BASE_URL}/comic/${bid}/${cid}.html`;
 }
 
@@ -84,9 +80,7 @@ export async function fetchBytes(url: string): Promise<Uint8Array> {
 }
 
 /** 从漫画柜 URL /comic/{bid}/ 或 /comic/{bid}/{cid}.html 中提取 bid/cid */
-export function parseComicPath(
-  href: string,
-): { bid: string; cid?: string } | null {
+export function parseComicPath(href: string): { bid: string; cid?: string } | null {
   const m = href.match(/\/comic\/(\d+)(?:\/(\d+)\.html)?/);
   if (!m) return null;
   return { bid: m[1], cid: m[2] };

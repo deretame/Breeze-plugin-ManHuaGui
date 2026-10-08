@@ -5,11 +5,7 @@ import { buildManifestInfo } from "../src/get-info";
 async function main() {
   const manifest = buildManifestInfo();
   const manifestPath = resolve(process.cwd(), "manifest.json");
-  await writeFile(
-    manifestPath,
-    `${JSON.stringify(manifest, null, 2)}\n`,
-    "utf-8",
-  );
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
   console.log(`[manifest] generated: ${manifestPath}`);
 }
 

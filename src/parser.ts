@@ -13,16 +13,11 @@ import type {
   MetadataListItem,
   PagingInfo,
   RecommendItem,
+  OpenSearchAction,
   SearchResultContract,
-  StringMap,
 } from "breeze-plugin-kit";
 import { PLUGIN_ID, createActionItem, createImage } from "./common";
-import {
-  buildChapterUrl,
-  buildComicUrl,
-  normalizeUrl,
-  parseComicPath,
-} from "./manhuagui";
+import { buildChapterUrl, buildComicUrl, normalizeUrl, parseComicPath } from "./manhuagui";
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -99,16 +94,12 @@ function buildComicListItem(
       {
         type: "author",
         name: "作者",
-        value: author.length
-          ? author.map((a) => createActionItem(a))
-          : [createActionItem("未知")],
+        value: author.length ? author.map((a) => createActionItem(a)) : [createActionItem("未知")],
       },
       {
         type: "tags",
         name: "類型",
-        value: tags.length
-          ? tags.map((t) => createActionItem(t))
-          : [createActionItem("未知")],
+        value: tags.length ? tags.map((t) => createActionItem(t)) : [createActionItem("未知")],
       },
     ],
     raw: {
@@ -144,7 +135,7 @@ function buildRecommendItem(
     id: bid,
     title,
     subtitle,
-    finished: /完結|已完结/.test(subtitle) || /^共/.test(subtitle),
+    finished: /完結|已完结/.test(subtitle) || subtitle.startsWith("共"),
     likesCount: 0,
     viewsCount: 0,
     updatedAt: "",
@@ -169,10 +160,7 @@ function buildPaging(page: number, total: number, pageSize = 10): PagingInfo {
 // search
 // ---------------------------------------------------------------------------
 
-export function parseSearchResult(
-  html: string,
-  page: number,
-): SearchResultContract {
+export function parseSearchResult(html: string, page: number): SearchResultContract {
   const root = loadHtml(html);
   const items: ComicListItem[] = [];
 
@@ -185,8 +173,7 @@ export function parseSearchResult(
     if (!parsed) return;
     const bid = parsed.bid;
 
-    const title =
-      extractAttr($cover, "title") || extractText($li.find("dt a").first());
+    const title = extractAttr($cover, "title") || extractText($li.find("dt a").first());
     const $subtitleA = $li.find("dt small a").first();
     const subtitle = $subtitleA.length > 0 ? extractText($subtitleA) : "";
     const coverUrl = extractAttr($cover.find("img").first(), "src");
@@ -220,17 +207,7 @@ export function parseSearchResult(
       }
     });
 
-    items.push(
-      buildComicListItem(
-        bid,
-        title,
-        subtitle,
-        coverUrl,
-        statusInfo,
-        authors,
-        tags,
-      ),
-    );
+    items.push(buildComicListItem(bid, title, subtitle, coverUrl, statusInfo, authors, tags));
   });
 
   const totalText = root(".result-count strong").last().text().trim();
@@ -256,24 +233,18 @@ export function parseSearchResult(
 // detail
 // ---------------------------------------------------------------------------
 
-function parseDetailTags(
-  root: BreezeApi,
-  $root: BreezeSelection,
-  label: string,
-): string[] {
+function parseDetailTags(root: BreezeApi, $root: BreezeSelection, label: string): string[] {
   const result: string[] = [];
-  $root
-    .find("ul.detail-list li span")
-    .each((_idx: number, span: BreezeSelection) => {
-      const $span = root(span);
-      const strongText = $span.find("strong").first().text().trim();
-      if (strongText.includes(label)) {
-        $span.find("a").each((_i: number, a: BreezeSelection) => {
-          const name = root(a).text().trim();
-          if (name) result.push(name);
-        });
-      }
-    });
+  $root.find("ul.detail-list li span").each((_idx: number, span: BreezeSelection) => {
+    const $span = root(span);
+    const strongText = $span.find("strong").first().text().trim();
+    if (strongText.includes(label)) {
+      $span.find("a").each((_i: number, a: BreezeSelection) => {
+        const name = root(a).text().trim();
+        if (name) result.push(name);
+      });
+    }
+  });
   return result;
 }
 
@@ -288,26 +259,20 @@ function parseDetailStatusText($root: BreezeSelection): {
   return { finished, updatedAt, totalViews: 0, totalLikes: 0 };
 }
 
-function parseDetailText(
-  root: BreezeApi,
-  $root: BreezeSelection,
-  label: string,
-): string {
+function parseDetailText(root: BreezeApi, $root: BreezeSelection, label: string): string {
   let result = "";
-  $root
-    .find("ul.detail-list li span")
-    .each((_idx: number, span: BreezeSelection) => {
-      const $span = root(span);
-      const strongText = $span.find("strong").first().text().trim();
-      if (strongText.includes(label)) {
-        result = $span.text().replace(strongText, "").trim();
-      }
-    });
+  $root.find("ul.detail-list li span").each((_idx: number, span: BreezeSelection) => {
+    const $span = root(span);
+    const strongText = $span.find("strong").first().text().trim();
+    if (strongText.includes(label)) {
+      result = $span.text().replace(strongText, "").trim();
+    }
+  });
   if (result === "暫無") return "";
   return result;
 }
 
-function createSearchAction(keyword: string): StringMap {
+function createSearchAction(keyword: string): OpenSearchAction {
   return {
     type: "openSearch",
     payload: {
@@ -315,44 +280,33 @@ function createSearchAction(keyword: string): StringMap {
       keyword,
       extern: {},
     },
-  } as StringMap;
+  };
 }
 
-function parseRecommendations(
-  root: BreezeApi,
-  $root: BreezeSelection,
-): RecommendItem[] {
+function parseRecommendations(root: BreezeApi, $root: BreezeSelection): RecommendItem[] {
   const items: RecommendItem[] = [];
 
-  $root
-    .find(".book-similar .similar-list > li")
-    .each((_idx: number, li: BreezeSelection) => {
-      const $li = root(li);
-      const $a = $li.find("a.scover").first();
-      const href = extractAttr($a, "href");
-      const parsed = parseComicPath(href);
-      if (!parsed) return;
+  $root.find(".book-similar .similar-list > li").each((_idx: number, li: BreezeSelection) => {
+    const $li = root(li);
+    const $a = $li.find("a.scover").first();
+    const href = extractAttr($a, "href");
+    const parsed = parseComicPath(href);
+    if (!parsed) return;
 
-      const bid = parsed.bid;
-      const title =
-        extractAttr($a, "title") ||
-        extractText($li.find("p.ell a").first()) ||
-        extractText($a);
-      const coverUrl = extractAttr($a.find("img").first(), "src");
-      const subtitle = extractText($li.find("span.tt").first());
+    const bid = parsed.bid;
+    const title =
+      extractAttr($a, "title") || extractText($li.find("p.ell a").first()) || extractText($a);
+    const coverUrl = extractAttr($a.find("img").first(), "src");
+    const subtitle = extractText($li.find("span.tt").first());
 
-      if (!title) return;
-      items.push(buildRecommendItem(bid, title, subtitle, coverUrl));
-    });
+    if (!title) return;
+    items.push(buildRecommendItem(bid, title, subtitle, coverUrl));
+  });
 
   return items;
 }
 
-function parseChapters(
-  root: BreezeApi,
-  $root: BreezeSelection,
-  bid: string,
-): ChapterSummary[] {
+function parseChapters(root: BreezeApi, $root: BreezeSelection, bid: string): ChapterSummary[] {
   const groups: ChapterSummary[][] = [];
 
   // 漫画柜把章节分成多个 ul，每个 ul 内部是倒序的；
@@ -388,10 +342,7 @@ function parseChapters(
   return flat;
 }
 
-export function parseComicDetail(
-  html: string,
-  bid: string,
-): ComicDetailContract {
+export function parseComicDetail(html: string, bid: string): ComicDetailContract {
   const root = loadHtml(html);
   const $detail = root(".book-detail");
 
@@ -416,16 +367,16 @@ export function parseComicDetail(
   });
 
   const creator = {
-    id: authors[0] ?? "unknown",
-    name: authors[0] ?? "未知",
+    id: "",
+    name: "",
     avatar: createImage({
-      id: `author-${authors[0] ?? "unknown"}`,
+      id: "",
       url: "",
       name: "avatar",
       path: "placeholder/author.jpg",
       extern: {},
     }),
-    onTap: {} as StringMap,
+    onTap: null,
     extern: {},
   };
 
@@ -471,8 +422,11 @@ export function parseComicDetail(
     isFavourite: false,
     isLiked: false,
     allowComments: false,
+    allowCommentsReason: "漫画柜暂不支持评论",
     allowLike: false,
+    allowLikeReason: "漫画柜暂不支持点赞",
     allowCollected: false,
+    allowCollectedReason: "漫画柜暂不支持收藏",
     allowDownload: true,
     extern: { bid },
   };

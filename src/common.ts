@@ -5,6 +5,7 @@ export const MANHUAGUI_REFERER = "https://tw.manhuagui.com/";
 
 import type {
   ActionItem,
+  ComicInfoPageAction,
   ComicListItem,
   ImageItem,
   MetadataListItem,
@@ -21,7 +22,7 @@ export function toStringMap(value: unknown): StringMap {
 
 export function createActionItem(
   name: unknown,
-  onTap: StringMap = {},
+  onTap: ComicInfoPageAction | null = null,
   extern: StringMap = {},
 ): ActionItem {
   // Keep all action payloads normalized so downstream schema consumers do not
@@ -70,11 +71,7 @@ export function createMetadataActionList(
   };
 }
 
-export function createBasicMetadata(
-  type: string,
-  name: string,
-  values: unknown,
-): MetadataListItem {
+export function createBasicMetadata(type: string, name: string, values: unknown): MetadataListItem {
   const list = Array.isArray(values) ? values : values == null ? [] : [values];
   return {
     type,

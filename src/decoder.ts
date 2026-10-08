@@ -12,8 +12,7 @@
 // LZ-string minimal decompressFromBase64 (MIT, adapted from pieroxy/lz-string)
 // ---------------------------------------------------------------------------
 
-const keyStrBase64 =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+const keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 
 function getBaseValue(alphabet: string, character: string): number {
   const idx = alphabet.indexOf(character);
@@ -186,9 +185,7 @@ function _decompress(
 function decompressFromBase64(input: string): string | null {
   if (!input) return "";
   const clean = input.replace(/[^A-Za-z0-9+/=]/g, "");
-  return _decompress(clean.length, 32, (index) =>
-    getBaseValue(keyStrBase64, clean.charAt(index)),
-  );
+  return _decompress(clean.length, 32, (index) => getBaseValue(keyStrBase64, clean.charAt(index)));
 }
 
 // ---------------------------------------------------------------------------
@@ -196,8 +193,7 @@ function decompressFromBase64(input: string): string | null {
 // ---------------------------------------------------------------------------
 
 // Dean Edwards Packer 使用的字符集：0-9, a-z, A-Z
-const PACKER_CHARS =
-  "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const PACKER_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 function toPackerBase(n: number, radix: number): string {
   if (n === 0) return "0";
@@ -205,10 +201,7 @@ function toPackerBase(n: number, radix: number): string {
   let num = n;
   while (num > 0) {
     const remainder = num % radix;
-    const char =
-      remainder > 35
-        ? String.fromCharCode(remainder + 29)
-        : PACKER_CHARS[remainder];
+    const char = remainder > 35 ? String.fromCharCode(remainder + 29) : PACKER_CHARS[remainder];
     result = char + result;
     num = Math.floor(num / radix);
   }
@@ -231,10 +224,7 @@ function unpackPacker(packed: string, words: string[], a: number): string {
     const key = toBase(i);
     const value = d[key];
     if (value === key) continue;
-    const regex = new RegExp(
-      `\\b${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
-      "g",
-    );
+    const regex = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g");
     result = result.replace(regex, value);
   }
   return result;
@@ -263,9 +253,7 @@ function extractBase64String(script: string): string | null {
   return m?.[1] ?? null;
 }
 
-function extractTemplateAndBase(
-  script: string,
-): { template: string; base: number } | null {
+function extractTemplateAndBase(script: string): { template: string; base: number } | null {
   // Packer 调用形如：
   // }('TEMPLATE',62,67,'BASE64'['\x73\x70\x6c\x69\x63']('\x7c'),0,{})
   // 或 }('TEMPLATE',36,50,'BASE64'.splice('|'),0,{})
@@ -323,9 +311,7 @@ export function decodeImageData(html: string): ImageData {
 
   const unpacked = unpackPacker(packInfo.template, words, packInfo.base);
 
-  const jsonMatch = unpacked.match(
-    /SMH\.imgData\((\{[\s\S]*?\})\)\.preInit\(\)/,
-  );
+  const jsonMatch = unpacked.match(/SMH\.imgData\((\{[\s\S]*?\})\)\.preInit\(\)/);
   if (!jsonMatch) throw new Error("未找到 SMH.imgData JSON");
 
   const data = JSON.parse(jsonMatch[1]) as ImageData;
@@ -345,7 +331,5 @@ export function buildImageUrlFromData(
 
 export function decodeImageUrls(html: string): string[] {
   const data = decodeImageData(html);
-  return data.files.map((file) =>
-    buildImageUrlFromData(data.path, file, data.cid, data.sl),
-  );
+  return data.files.map((file) => buildImageUrlFromData(data.path, file, data.cid, data.sl));
 }
