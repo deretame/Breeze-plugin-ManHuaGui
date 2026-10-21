@@ -7,6 +7,7 @@ import type {
   ChapterSummary,
   ComicDetailContract,
   ComicDetailPayload,
+  ComicListScene,
   ComicListSceneBundleContract,
   ComicPagedListContract,
   CommentFeedContract,
@@ -21,9 +22,12 @@ import type {
   FilterBundleContract,
   FunctionPageContract,
   GetFunctionPagePayload,
+  GetPluginHomePagesBundlePayload,
   InfoContract,
   ListFavoriteFoldersResult,
   MoveFavoriteToFolderPayload,
+  PluginHomePagesBundleContract,
+  PluginHomeTab,
   ReadSnapshotContract,
   ReadSnapshotPayload,
   SearchComicPayload,
@@ -410,6 +414,45 @@ async function getComicListSceneBundle(): Promise<ComicListSceneBundleContract> 
 }
 
 // ---------------------------------------------------------------------------
+// getPluginHomePagesBundle — 插件首页
+// ---------------------------------------------------------------------------
+
+/** 构建排行榜 scene（与 getComicListSceneBundle 同源，供首页 tab 复用） */
+function buildRankingScene(): ComicListScene {
+  return {
+    title: "示例排行榜",
+    source: PLUGIN_ID,
+    body: {
+      type: "pluginPagedComicList" as const,
+      request: {
+        fnPath: "getRankingData",
+        core: {},
+        extern: { source: "ranking" },
+      },
+    },
+    filter: {
+      fnPath: "getRankingFilterBundle",
+      extern: { source: "ranking" },
+    },
+  };
+}
+
+/** 插件首页 — 排行榜 tab（无登录插件只补第一页，不置 haveCloudFavorite） */
+async function getPluginHomePagesBundle(
+  _payload: GetPluginHomePagesBundlePayload = {},
+): Promise<PluginHomePagesBundleContract> {
+  const tabs: PluginHomeTab[] = [{ id: "ranking", title: "示例排行榜", scene: buildRankingScene() }];
+  return {
+    source: PLUGIN_ID,
+    scheme: {
+      version: "1.0.0" as const,
+      type: "homePagesBundle" as const,
+    },
+    data: { tabs },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // getRankingData — 榜单数据
 // ---------------------------------------------------------------------------
 
@@ -746,6 +789,7 @@ export default {
   getComicListSceneBundle,
   getRankingData,
   getRankingFilterBundle,
+  getPluginHomePagesBundle,
 
   // settings
   getSettingsBundle,

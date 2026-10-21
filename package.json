@@ -1,6 +1,6 @@
 {
   "name": "breeze-plugin-man-hua-gui",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "type": "module",
   "packageManager": "pnpm@12.14.0",
   "files": [
@@ -29,6 +29,6 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
-    "breeze-plugin-kit": "^0.14.0"
+    "breeze-plugin-kit": "^0.18.0"
   }
 }

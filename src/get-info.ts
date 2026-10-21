@@ -7,10 +7,11 @@ export function buildPluginInfo(): InfoContract {
     uuid: PLUGIN_ID,
     iconUrl: "https://tw.manhuagui.com/favicon.ico",
     describe: "漫画柜（看漫画）繁体版源站插件",
-    version: "0.0.3",
+    version: "0.1.0",
     home: "https://github.com/deretame/Breeze-plugin-ManHuaGui",
     updateUrl: "https://api.github.com/repos/deretame/Breeze-plugin-ManHuaGui/releases/latest",
     npmName: "breeze-plugin-man-hua-gui",
+    haveHome: true,
     function: [],
   };
 }
